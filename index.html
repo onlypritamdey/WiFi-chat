@@ -3,75 +3,63 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Hotspot Chat</title>
+    <title>WiFi Chat Pro</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
-        :root { --bg: #121212; --card: #1c1c1e; --text: #fff; --accent: #0a84ff; --secondary: #2c2c2e; --green: #30d158; }
-        
+        :root { --bg: #000; --card: #1c1c1e; --text: #fff; --accent: #0a84ff; --secondary: #2c2c2e; --green: #30d158; --danger: #ff453a; }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        
-        /* Forces the app to stay inside the screen boundaries */
-        body, html { 
-            height: 100%; width: 100%; margin: 0; padding: 0; 
-            background: var(--bg); color: var(--text); 
-            font-family: -apple-system, sans-serif; 
-            overflow: hidden; position: fixed; /* Prevents bounce scrolling on iOS */
-        }
+        body, html { height: 100%; width: 100%; margin: 0; padding: 0; background: var(--bg); color: var(--text); font-family: -apple-system, sans-serif; overflow: hidden; position: fixed; }
 
-        .main-wrapper {
-            display: flex; flex-direction: column;
-            height: 100dvh; /* Dynamic Viewport Height for mobile browsers */
-            padding-top: env(safe-area-inset-top);
-            padding-bottom: env(safe-area-inset-bottom);
-        }
+        .main-wrapper { display: flex; flex-direction: column; height: 100dvh; padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }
 
-        /* Header Area */
-        #header { 
-            padding: 10px 15px; background: var(--card); 
-            border-bottom: 1px solid var(--secondary); flex-shrink: 0; 
-        }
+        /* Header */
+        #header { padding: 10px 15px; background: var(--card); border-bottom: 1px solid var(--secondary); flex-shrink: 0; z-index: 10; }
         .id-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
         .id-badge { font-weight: bold; color: var(--accent); font-size: 1.1rem; }
         .input-row { display: flex; gap: 8px; }
 
-        /* Floating Video Container (Doesn't push chat) */
-        #video-overlay { 
-            display: none; position: absolute; top: 120px; right: 10px; 
-            width: 120px; height: 160px; background: #000; 
-            border-radius: 12px; overflow: hidden; z-index: 100;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5); border: 1px solid var(--secondary);
+        /* Video UI Overlay */
+        #video-ui { 
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background: #000; z-index: 100; flex-direction: column; 
         }
         #remote-video { width: 100%; height: 100%; object-fit: cover; }
-        #local-video { 
-            position: absolute; bottom: 5px; right: 5px; 
-            width: 40px; height: 50px; border-radius: 4px; border: 1px solid #fff; 
+        #local-video-pip { 
+            position: absolute; top: 20px; right: 20px; width: 100px; height: 150px; 
+            border-radius: 12px; border: 1px solid #ffffff44; object-fit: cover; z-index: 101;
         }
 
-        /* Chat Area - The only part that scrolls */
-        #chat-box { 
-            flex-grow: 1; overflow-y: auto; padding: 15px; 
-            display: flex; flex-direction: column; gap: 10px;
-            -webkit-overflow-scrolling: touch; 
+        /* Controls Area */
+        .v-controls { 
+            position: absolute; bottom: 50px; left: 0; width: 100%; 
+            display: flex; justify-content: center; gap: 15px; z-index: 105; 
         }
-        .msg { padding: 10px 14px; border-radius: 18px; max-width: 75%; font-size: 15px; line-height: 1.4; }
-        .sent { align-self: flex-end; background: var(--accent); border-bottom-right-radius: 4px; }
-        .received { align-self: flex-start; background: var(--secondary); border-bottom-left-radius: 4px; }
+        .v-btn { 
+            width: 55px; height: 55px; border-radius: 50%; border: none; 
+            background: rgba(255,255,255,0.25); color: white; 
+            display: flex; align-items: center; justify-content: center; 
+            font-size: 11px; font-weight: bold; backdrop-filter: blur(10px);
+        }
+        .v-btn.off { background: var(--danger); }
+        .v-btn.end { background: var(--danger); }
+
+        /* Custom Incoming Call Popup */
+        #call-popup {
+            display: none; position: fixed; top: 20%; left: 50%; transform: translateX(-50%);
+            width: 80%; max-width: 300px; background: var(--card); border: 1px solid var(--accent);
+            border-radius: 20px; padding: 20px; text-align: center; z-index: 200; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        /* Chat Layout */
+        #chat-box { flex-grow: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; background: #121212; }
+        .msg { padding: 10px 14px; border-radius: 18px; max-width: 75%; font-size: 15px; }
+        .sent { align-self: flex-end; background: var(--accent); }
+        .received { align-self: flex-start; background: var(--secondary); }
         .system { align-self: center; font-size: 11px; color: #888; margin: 10px 0; }
 
-        /* Input Area at the bottom */
-        #input-area { 
-            padding: 10px 15px; background: var(--card); 
-            border-top: 1px solid var(--secondary); flex-shrink: 0;
-        }
-        input { 
-            flex: 1; padding: 10px 15px; border-radius: 20px; 
-            border: none; background: var(--secondary); color: white; 
-            font-size: 16px; outline: none;
-        }
-        button { 
-            border: none; padding: 8px 15px; border-radius: 20px; 
-            font-weight: 600; font-size: 14px; color: white;
-        }
+        #input-area { padding: 10px 15px; background: var(--card); border-top: 1px solid var(--secondary); flex-shrink: 0; }
+        input { flex: 1; padding: 10px 15px; border-radius: 20px; border: none; background: var(--secondary); color: white; font-size: 16px; outline: none; }
+        button { border: none; padding: 8px 15px; border-radius: 20px; font-weight: 600; cursor: pointer; color: white; }
         .btn-blue { background: var(--accent); }
         .btn-green { background: var(--green); display: none; }
     </style>
@@ -81,24 +69,35 @@
 <div class="main-wrapper">
     <div id="header">
         <div class="id-row">
-            <span style="font-size: 12px; color: #888;">MY ID: <span id="my-id" class="id-badge">....</span></span>
+            <span>MY ID: <span id="my-id" class="id-badge">....</span></span>
             <button id="v-call-btn" class="btn-green" onclick="startCall()">Video Call</button>
         </div>
         <div class="input-row">
-            <input id="friend-id" type="number" pattern="\d*" placeholder="Enter Friend's ID">
+            <input id="friend-id" type="number" pattern="\d*" placeholder="Friend's ID">
             <button class="btn-blue" onclick="connectToFriend()">Connect</button>
         </div>
     </div>
 
-    <div id="video-overlay">
-        <video id="remote-video" autoplay playsinline></video>
-        <video id="local-video" autoplay muted playsinline></video>
-        <button style="position:absolute; top:0; right:0; background:rgba(0,0,0,0.5); padding:5px;" onclick="location.reload()">X</button>
+    <div id="call-popup">
+        <h3>Incoming Call...</h3>
+        <div style="display:flex; gap:10px; justify-content:center; margin-top:15px;">
+            <button class="btn-blue" style="background:var(--green)" onclick="answerCall()">Answer</button>
+            <button class="btn-blue" style="background:var(--danger)" onclick="declineCall()">Decline</button>
+        </div>
     </div>
 
-    <div id="chat-box">
-        <div class="system">Waiting for connection...</div>
+    <div id="video-ui">
+        <video id="remote-video" autoplay playsinline></video>
+        <video id="local-video-pip" autoplay muted playsinline></video>
+        <div class="v-controls">
+            <button class="v-btn" id="mute-btn" onclick="toggleMute()">Mute</button>
+            <button class="v-btn" id="cam-btn" onclick="toggleVideo()">Cam</button>
+            <button class="v-btn" onclick="switchCamera()">Swap</button>
+            <button class="v-btn end" onclick="endCall()">End</button>
+        </div>
     </div>
+
+    <div id="chat-box"><div class="system">Connect to start...</div></div>
 
     <div id="input-area">
         <div class="input-row">
@@ -109,50 +108,92 @@
 </div>
 
 <script>
-    const chatBox = document.getElementById('chat-box');
     const myIdDisplay = document.getElementById('my-id');
     const shortId = Math.floor(1000 + Math.random() * 9000).toString();
     const peer = new Peer(shortId); 
-    let connection, localStream;
+    let connection, localStream, currentCall, incomingCall;
+    let isMuted = false, isVideoOff = false, facingMode = "user";
 
     peer.on('open', id => myIdDisplay.innerText = id);
+    peer.on('connection', conn => { connection = conn; setupEvents(); });
 
-    // Incoming Chat
-    peer.on('connection', conn => {
-        connection = conn;
-        setupEvents();
-    });
-
-    // Incoming Call
+    // Handle Incoming Call via Custom Popup
     peer.on('call', call => {
-        if (confirm("Answer video call?")) {
-            navigator.mediaDevices.getUserMedia({video: true, audio: true}).then(stream => {
-                localStream = stream;
-                showVideo(stream);
-                call.answer(stream);
-                call.on('stream', rs => document.getElementById('remote-video').srcObject = rs);
-            });
-        }
+        incomingCall = call;
+        document.getElementById('call-popup').style.display = 'block';
     });
+
+    async function answerCall() {
+        document.getElementById('call-popup').style.display = 'none';
+        localStream = await getMedia();
+        showVideoUI(localStream);
+        incomingCall.answer(localStream);
+        currentCall = incomingCall;
+        currentCall.on('stream', rs => document.getElementById('remote-video').srcObject = rs);
+    }
+
+    function declineCall() {
+        document.getElementById('call-popup').style.display = 'none';
+        incomingCall.close();
+    }
+
+    async function getMedia() {
+        return await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: facingMode }, audio: true 
+        });
+    }
+
+    function showVideoUI(stream) {
+        document.getElementById('video-ui').style.display = 'flex';
+        document.getElementById('local-video-pip').srcObject = stream;
+    }
+
+    function endCall() {
+        if(currentCall) currentCall.close();
+        if(localStream) localStream.getTracks().forEach(t => t.stop());
+        document.getElementById('video-ui').style.display = 'none';
+        // Removed location.reload() to prevent page reset
+    }
+
+    function toggleMute() {
+        isMuted = !isMuted;
+        localStream.getAudioTracks()[0].enabled = !isMuted;
+        document.getElementById('mute-btn').classList.toggle('off', isMuted);
+    }
+
+    function toggleVideo() {
+        isVideoOff = !isVideoOff;
+        localStream.getVideoTracks()[0].enabled = !isVideoOff;
+        document.getElementById('cam-btn').classList.toggle('off', isVideoOff);
+    }
+
+    async function switchCamera() {
+        facingMode = (facingMode === "user") ? "environment" : "user";
+        if (localStream) {
+            localStream.getTracks().forEach(t => t.stop());
+            const newStream = await getMedia();
+            document.getElementById('local-video-pip').srcObject = newStream;
+            if (currentCall) {
+                const videoTrack = newStream.getVideoTracks()[0];
+                const sender = currentCall.peerConnection.getSenders().find(s => s.track.kind === 'video');
+                sender.replaceTrack(videoTrack);
+            }
+            localStream = newStream;
+        }
+    }
 
     function connectToFriend() {
         const id = document.getElementById('friend-id').value;
-        if (!id) return;
         connection = peer.connect(id);
         setupEvents();
     }
 
     async function startCall() {
         const id = document.getElementById('friend-id').value;
-        localStream = await navigator.mediaDevices.getUserMedia({video: true, audio: true});
-        showVideo(localStream);
-        const call = peer.call(id, localStream);
-        call.on('stream', rs => document.getElementById('remote-video').srcObject = rs);
-    }
-
-    function showVideo(stream) {
-        document.getElementById('video-overlay').style.display = 'block';
-        document.getElementById('local-video').srcObject = stream;
+        localStream = await getMedia();
+        showVideoUI(localStream);
+        currentCall = peer.call(id, localStream);
+        currentCall.on('stream', rs => document.getElementById('remote-video').srcObject = rs);
     }
 
     function setupEvents() {
@@ -176,15 +217,9 @@
         const div = document.createElement('div');
         div.className = `msg ${type}`;
         div.innerText = text;
-        chatBox.appendChild(div);
-        chatBox.scrollTo({ top: chatBox.scrollHeight, behavior: 'smooth' });
+        document.getElementById('chat-box').appendChild(div);
+        document.getElementById('chat-box').scrollTop = document.getElementById('chat-box').scrollHeight;
     }
-
-    // Prevents keyboard from hiding input
-    window.addEventListener('resize', () => {
-        chatBox.scrollTop = chatBox.scrollHeight;
-    });
 </script>
-
 </body>
 </html>
