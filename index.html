@@ -3,8 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>WiFi Chat Pro</title>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>WiFi Chat</title>
+    
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <link rel="manifest" href="data:application/manifest+json,{%22name%22:%22WiFi%20Chat%22,%22short_name%22:%22WiFiChat%22,%22start_url%22:%22.%22,%22display%22:%22standalone%22,%22background_color%22:%22#000000%22,%22theme_color%22:%22#000000%22}">
+
     <style>
         :root { --bg: #000; --card: #1c1c1e; --text: #fff; --accent: #0a84ff; --secondary: #2c2c2e; --green: #30d158; --danger: #ff453a; }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -14,104 +21,62 @@
 
         /* Header */
         #header { padding: 10px 15px; background: var(--card); border-bottom: 1px solid var(--secondary); flex-shrink: 0; z-index: 10; }
-        .id-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-        .id-badge { font-weight: bold; color: var(--accent); font-size: 1.1rem; }
-        .input-row { display: flex; gap: 8px; }
+        .id-badge { font-weight: bold; color: var(--accent); font-size: 1.1rem; letter-spacing: 1px; }
+        .input-row { display: flex; gap: 8px; margin-top: 10px; }
 
-        /* FIXED FULL SCREEN VIDEO UI */
-        #video-ui { 
-            display: none; 
-            position: fixed; 
-            top: 0; left: 0; 
-            width: 100vw; height: 100dvh; 
-            background: #000; 
-            z-index: 9999; /* Higher than everything */
-            flex-direction: column; 
-        }
-        
-        /* Main Remote Video - Full Screen */
-        #remote-video { 
-            width: 100%; 
-            height: 100%; 
-            object-fit: cover; 
-            position: absolute;
-            top: 0; left: 0;
-        }
+        /* Full Screen Video UI */
+        #video-ui { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh; background: #000; z-index: 9999; flex-direction: column; }
+        #remote-video { width: 100%; height: 100%; object-fit: cover; position: absolute; }
+        #local-video-pip { position: absolute; top: calc(20px + env(safe-area-inset-top)); right: 20px; width: 100px; height: 150px; border-radius: 12px; border: 1.5px solid rgba(255,255,255,0.3); object-fit: cover; z-index: 10000; background: #222; box-shadow: 0 8px 20px rgba(0,0,0,0.4); }
 
-        /* Your Small Camera - Floating on top */
-        #local-video-pip { 
-            position: absolute; 
-            top: calc(20px + env(safe-area-inset-top)); 
-            right: 20px; 
-            width: 100px; height: 150px; 
-            border-radius: 12px; 
-            border: 1.5px solid rgba(255,255,255,0.3); 
-            object-fit: cover; 
-            z-index: 10000;
-            background: #222;
-        }
+        /* Icon Buttons */
+        .v-controls { position: absolute; bottom: calc(50px + env(safe-area-inset-bottom)); left: 0; width: 100%; display: flex; justify-content: center; gap: 15px; z-index: 10001; }
+        .v-btn { width: 60px; height: 60px; border-radius: 50%; border: none; background: rgba(255,255,255,0.15); color: white; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); transition: all 0.2s; }
+        .v-btn.off { background: var(--danger); color: white; }
+        .v-btn.end { background: var(--danger); width: 70px; }
+        .v-btn:active { transform: scale(0.9); }
 
-        /* Controls Area - Floating at bottom */
-        .v-controls { 
-            position: absolute; 
-            bottom: calc(40px + env(safe-area-inset-bottom)); 
-            left: 0; width: 100%; 
-            display: flex; justify-content: center; gap: 12px; 
-            z-index: 10001; 
-        }
+        /* Popup */
+        #call-popup { display: none; position: fixed; top: 15%; left: 50%; transform: translateX(-50%); width: 85%; max-width: 320px; background: var(--card); border-radius: 28px; padding: 25px; text-align: center; z-index: 10002; box-shadow: 0 20px 50px rgba(0,0,0,0.8); border: 1px solid #333; }
 
-        .v-btn { 
-            width: 58px; height: 58px; border-radius: 50%; border: none; 
-            background: rgba(255,255,255,0.2); color: white; 
-            display: flex; align-items: center; justify-content: center; 
-            font-size: 11px; font-weight: 600; backdrop-filter: blur(15px);
-            -webkit-backdrop-filter: blur(15px);
-        }
-        .v-btn.off { background: var(--danger); }
-        .v-btn.end { background: var(--danger); }
-
-        /* Incoming Call Popup */
-        #call-popup {
-            display: none; position: fixed; top: 15%; left: 50%; transform: translateX(-50%);
-            width: 85%; max-width: 320px; background: var(--card); border: 1px solid var(--accent);
-            border-radius: 24px; padding: 25px; text-align: center; z-index: 10002; 
-            box-shadow: 0 20px 40px rgba(0,0,0,0.6);
-        }
-
-        /* Chat Styling */
-        #chat-box { flex-grow: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; background: #000; }
-        .msg { padding: 12px 16px; border-radius: 20px; max-width: 75%; font-size: 15px; }
+        /* Chat */
+        #chat-box { flex-grow: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; background: #000; scroll-behavior: smooth; }
+        .msg { padding: 12px 16px; border-radius: 20px; max-width: 75%; font-size: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
         .sent { align-self: flex-end; background: var(--accent); border-bottom-right-radius: 4px; }
         .received { align-self: flex-start; background: var(--secondary); border-bottom-left-radius: 4px; }
-        .system { align-self: center; font-size: 11px; color: #888; margin: 10px 0; font-weight: 500; }
+        .system { align-self: center; font-size: 11px; color: #666; margin: 10px 0; text-transform: uppercase; letter-spacing: 1px; }
 
+        /* Footer */
         #input-area { padding: 10px 15px; background: var(--card); border-top: 1px solid var(--secondary); flex-shrink: 0; }
         input { flex: 1; padding: 12px 18px; border-radius: 25px; border: none; background: var(--secondary); color: white; font-size: 16px; outline: none; }
-        button { border: none; padding: 10px 20px; border-radius: 25px; font-weight: 600; cursor: pointer; color: white; }
-        .btn-blue { background: var(--accent); }
-        .btn-green { background: var(--green); display: none; }
+        .send-btn { background: var(--accent); width: 45px; height: 45px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: none; flex-shrink: 0; }
     </style>
 </head>
 <body>
 
 <div class="main-wrapper">
     <div id="header">
-        <div class="id-row">
-            <span>MY ID: <span id="my-id" class="id-badge">....</span></span>
-            <button id="v-call-btn" class="btn-green" onclick="startCall()">Video Call</button>
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span><i data-lucide="wifi" style="width:16px;vertical-align:middle"></i> MY ID: <span id="my-id" class="id-badge">....</span></span>
+            <button id="v-call-btn" style="background:var(--green); display:none; padding:8px 15px; border-radius:20px; color:white; border:none; font-weight:600;" onclick="startCall()">
+                <i data-lucide="video" style="width:18px; vertical-align:middle; margin-right:5px"></i> Video Call
+            </button>
         </div>
         <div class="input-row">
-            <input id="friend-id" type="number" pattern="\d*" placeholder="Enter ID">
-            <button class="btn-blue" onclick="connectToFriend()">Connect</button>
+            <input id="friend-id" type="number" pattern="\d*" placeholder="Enter Friend's ID">
+            <button onclick="connectToFriend()" style="background:var(--accent); color:white; border:none; padding:0 20px; border-radius:25px; font-weight:600;">Connect</button>
         </div>
     </div>
 
     <div id="call-popup">
-        <h2 style="margin:0 0 10px 0; font-size: 1.2rem;">Incoming Call</h2>
-        <p style="color:#aaa; font-size: 0.9rem; margin-bottom: 20px;">Your family member is calling...</p>
-        <div style="display:flex; gap:12px; justify-content:center;">
-            <button onclick="answerCall()" style="background:var(--green); flex:1;">Answer</button>
-            <button onclick="declineCall()" style="background:var(--danger); flex:1;">Decline</button>
+        <div style="background:var(--accent); width:60px; height:60px; border-radius:50%; margin:0 auto 15px; display:flex; align-items:center; justify-content:center;">
+            <i data-lucide="phone-incoming" style="width:30px; height:30px"></i>
+        </div>
+        <h2 style="margin:0 0 5px 0">Incoming Call</h2>
+        <p style="color:#888; margin-bottom:25px">Family is calling...</p>
+        <div style="display:flex; gap:12px;">
+            <button onclick="answerCall()" style="background:var(--green); flex:1; padding:15px; border-radius:15px; color:white; border:none; font-weight:bold;">Answer</button>
+            <button onclick="declineCall()" style="background:var(--danger); flex:1; padding:15px; border-radius:15px; color:white; border:none; font-weight:bold;">Decline</button>
         </div>
     </div>
 
@@ -119,65 +84,69 @@
         <video id="remote-video" autoplay playsinline></video>
         <video id="local-video-pip" autoplay muted playsinline></video>
         <div class="v-controls">
-            <button class="v-btn" id="mute-btn" onclick="toggleMute()">Mute</button>
-            <button class="v-btn" id="cam-btn" onclick="toggleVideo()">Cam</button>
-            <button class="v-btn" onclick="switchCamera()">Swap</button>
-            <button class="v-btn end" onclick="endCall()">End</button>
+            <button class="v-btn" id="mute-btn" onclick="toggleMute()"><i data-lucide="mic"></i></button>
+            <button class="v-btn" id="cam-btn" onclick="toggleVideo()"><i data-lucide="video"></i></button>
+            <button class="v-btn" onclick="switchCamera()"><i data-lucide="camera-reverse"></i></button>
+            <button class="v-btn end" onclick="endCall()"><i data-lucide="phone-off"></i></button>
         </div>
     </div>
 
-    <div id="chat-box"><div class="system">PRIVATE CONNECTION READY</div></div>
+    <div id="chat-box"><div class="system">Encrypted WiFi Chat Active</div></div>
 
     <div id="input-area">
-        <div class="input-row">
-            <input id="message-input" type="text" placeholder="Type a message..." autocomplete="off">
-            <button class="btn-blue" onclick="sendMessage()">Send</button>
+        <div style="display:flex; gap:10px; align-items:center;">
+            <input id="message-input" type="text" placeholder="Message..." autocomplete="off">
+            <button class="send-btn" onclick="sendMessage()"><i data-lucide="send" style="width:20px"></i></button>
         </div>
     </div>
 </div>
 
 <script>
+    // SFX Assets
+    const msgSfx = new Audio('https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3');
+    const callSfx = new Audio('https://assets.mixkit.co/active_storage/sfx/1359/1359-preview.mp3');
+    callSfx.loop = true;
+
     const myIdDisplay = document.getElementById('my-id');
     const shortId = Math.floor(1000 + Math.random() * 9000).toString();
     const peer = new Peer(shortId); 
     let connection, localStream, currentCall, incomingCall;
     let isMuted = false, isVideoOff = false, facingMode = "user";
 
+    // Initialize Icons
+    lucide.createIcons();
+
     peer.on('open', id => myIdDisplay.innerText = id);
     peer.on('connection', conn => { connection = conn; setupEvents(); });
 
     peer.on('call', call => {
         incomingCall = call;
+        callSfx.play();
         document.getElementById('call-popup').style.display = 'block';
     });
 
     async function answerCall() {
+        callSfx.pause();
         document.getElementById('call-popup').style.display = 'none';
         localStream = await getMedia();
         showVideoUI(localStream);
         incomingCall.answer(localStream);
         currentCall = incomingCall;
-        currentCall.on('stream', rs => {
-            const remoteVideo = document.getElementById('remote-video');
-            remoteVideo.srcObject = rs;
-            remoteVideo.play();
-        });
+        currentCall.on('stream', rs => { document.getElementById('remote-video').srcObject = rs; });
     }
 
     function declineCall() {
+        callSfx.pause();
         document.getElementById('call-popup').style.display = 'none';
         incomingCall.close();
     }
 
     async function getMedia() {
-        return await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: facingMode }, audio: true 
-        });
+        return await navigator.mediaDevices.getUserMedia({ video: { facingMode: facingMode }, audio: true });
     }
 
     function showVideoUI(stream) {
-        const ui = document.getElementById('video-ui');
-        ui.style.display = 'flex';
+        document.getElementById('video-ui').style.display = 'flex';
         document.getElementById('local-video-pip').srcObject = stream;
     }
 
@@ -185,20 +154,23 @@
         if(currentCall) currentCall.close();
         if(localStream) localStream.getTracks().forEach(t => t.stop());
         document.getElementById('video-ui').style.display = 'none';
+        callSfx.pause();
     }
 
     function toggleMute() {
         isMuted = !isMuted;
         localStream.getAudioTracks()[0].enabled = !isMuted;
         document.getElementById('mute-btn').classList.toggle('off', isMuted);
-        document.getElementById('mute-btn').innerText = isMuted ? "Unmute" : "Mute";
+        document.getElementById('mute-btn').innerHTML = isMuted ? '<i data-lucide="mic-off"></i>' : '<i data-lucide="mic"></i>';
+        lucide.createIcons();
     }
 
     function toggleVideo() {
         isVideoOff = !isVideoOff;
         localStream.getVideoTracks()[0].enabled = !isVideoOff;
         document.getElementById('cam-btn').classList.toggle('off', isVideoOff);
-        document.getElementById('cam-btn').innerText = isVideoOff ? "Cam On" : "Cam Off";
+        document.getElementById('cam-btn').innerHTML = isVideoOff ? '<i data-lucide="video-off"></i>' : '<i data-lucide="video"></i>';
+        lucide.createIcons();
     }
 
     async function switchCamera() {
@@ -228,19 +200,18 @@
         localStream = await getMedia();
         showVideoUI(localStream);
         currentCall = peer.call(id, localStream);
-        currentCall.on('stream', rs => {
-            const remoteVideo = document.getElementById('remote-video');
-            remoteVideo.srcObject = rs;
-            remoteVideo.play();
-        });
+        currentCall.on('stream', rs => { document.getElementById('remote-video').srcObject = rs; });
     }
 
     function setupEvents() {
         connection.on('open', () => {
-            appendMessage("", "SECURE CONNECTION ESTABLISHED", 'system');
+            appendMessage("", "CONNECTED", 'system');
             document.getElementById('v-call-btn').style.display = 'block';
         });
-        connection.on('data', data => appendMessage("Friend", data, 'received'));
+        connection.on('data', data => {
+            msgSfx.play();
+            appendMessage("Friend", data, 'received');
+        });
     }
 
     function sendMessage() {
@@ -259,6 +230,12 @@
         const box = document.getElementById('chat-box');
         box.appendChild(div);
         box.scrollTop = box.scrollHeight;
+    }
+
+    // Register Service Worker for PWA Offline Support
+    if ('serviceWorker' in navigator) {
+        const sw = 'data:application/javascript;base64,' + btoa('self.addEventListener("fetch", (e) => e.respondWith(fetch(e.request)));');
+        navigator.serviceWorker.register(sw);
     }
 </script>
 </body>
