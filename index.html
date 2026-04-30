@@ -3,54 +3,36 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="mobile-web-app-capable" content="yes">
-    <title>Home WiFi Chat</title>
-    
+    <title>WiFi Chat</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-
     <style>
         :root { --bg: #000; --card: #1c1c1e; --text: #fff; --accent: #0a84ff; --secondary: #2c2c2e; --green: #30d158; --danger: #ff453a; }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; }
         body, html { height: 100%; width: 100%; margin: 0; padding: 0; background: var(--bg); color: var(--text); font-family: -apple-system, sans-serif; overflow: hidden; position: fixed; }
-
         .main-wrapper { display: flex; flex-direction: column; height: 100dvh; padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }
-
-        /* Header */
-        #header { padding: 15px; background: var(--card); border-bottom: 1px solid var(--secondary); flex-shrink: 0; display: flex; justify-content: space-between; align-items: center; z-index: 10; }
+        #header { padding: 15px; background: var(--card); border-bottom: 1px solid var(--secondary); display: flex; justify-content: space-between; align-items: center; z-index: 10; }
         .status-dot { height: 10px; width: 10px; background: #333; border-radius: 50%; display: inline-block; margin-right: 8px; transition: 0.3s; }
         .online { background: var(--green); box-shadow: 0 0 12px var(--green); }
         #role-label { font-size: 11px; color: #888; text-transform: uppercase; font-weight: 800; letter-spacing: 1px; }
-
-        /* Video System */
         #video-ui { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh; background: #000; z-index: 9999; flex-direction: column; }
         #remote-video { width: 100%; height: 100%; object-fit: cover; position: absolute; }
-        #local-video-pip { position: absolute; top: calc(20px + env(safe-area-inset-top)); right: 20px; width: 100px; height: 150px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.3); object-fit: cover; z-index: 10000; background: #222; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
-
+        #local-video-pip { position: absolute; top: calc(20px + env(safe-area-inset-top)); right: 20px; width: 100px; height: 150px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.3); object-fit: cover; z-index: 10000; background: #222; }
         .v-controls { position: absolute; bottom: calc(60px + env(safe-area-inset-bottom)); left: 0; width: 100%; display: flex; justify-content: center; gap: 20px; z-index: 10001; }
-        .v-btn { width: 62px; height: 62px; border-radius: 50%; border: none; background: rgba(255,255,255,0.15); color: white; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); font-size: 24px; transition: transform 0.1s; }
-        .v-btn:active { transform: scale(0.9); }
+        .v-btn { width: 62px; height: 62px; border-radius: 50%; border: none; background: rgba(255,255,255,0.15); color: white; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(20px); font-size: 24px; }
         .v-btn.off { background: var(--danger); }
-        .v-btn.end { background: var(--danger); width: 70px; }
-
-        /* Popups */
-        #call-popup { display: none; position: fixed; top: 15%; left: 50%; transform: translateX(-50%); width: 85%; max-width: 320px; background: var(--card); border-radius: 30px; padding: 30px; text-align: center; z-index: 10002; border: 1px solid #333; box-shadow: 0 25px 60px rgba(0,0,0,1); }
-
-        /* Chat Layout */
-        #chat-box { flex-grow: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; background: #000; -webkit-overflow-scrolling: touch; }
-        .msg { padding: 12px 18px; border-radius: 22px; max-width: 80%; font-size: 16px; word-wrap: break-word; }
-        .sent { align-self: flex-end; background: var(--accent); color: white; border-bottom-right-radius: 4px; }
-        .received { align-self: flex-start; background: var(--secondary); color: white; border-bottom-left-radius: 4px; }
-        
-        /* Message Input */
-        #input-area { padding: 12px 15px; background: var(--card); border-top: 1px solid var(--secondary); flex-shrink: 0; }
+        #call-popup { display: none; position: fixed; top: 15%; left: 50%; transform: translateX(-50%); width: 85%; max-width: 320px; background: var(--card); border-radius: 30px; padding: 30px; text-align: center; z-index: 10002; border: 1px solid #333; }
+        #chat-box { flex-grow: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; background: #000; }
+        .msg { padding: 12px 18px; border-radius: 22px; max-width: 80%; font-size: 16px; }
+        .sent { align-self: flex-end; background: var(--accent); border-bottom-right-radius: 4px; }
+        .received { align-self: flex-start; background: var(--secondary); border-bottom-left-radius: 4px; }
+        #input-area { padding: 12px 15px; background: var(--card); border-top: 1px solid var(--secondary); }
         .input-row { display: flex; gap: 12px; align-items: center; }
         input { flex: 1; padding: 14px 20px; border-radius: 30px; border: none; background: var(--secondary); color: white; font-size: 16px; }
-        .send-btn { background: var(--accent); color: white; border: none; width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
+        .send-btn { background: var(--accent); color: white; border: none; width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; }
     </style>
 </head>
-<body onclick="wakeAudio()">
+<body onclick="forceAudioStart()">
 
 <div class="main-wrapper">
     <div id="header">
@@ -61,13 +43,11 @@
     </div>
 
     <div id="call-popup">
-        <div style="width: 70px; height: 70px; background: var(--accent); border-radius: 50%; margin: 0 auto 20px; display: flex; align-items: center; justify-content: center;">
-            <i class="fas fa-phone-alt fa-beat" style="font-size:30px; color:white"></i>
-        </div>
-        <h2 style="margin:0 0 10px 0; font-weight:800;">Incoming</h2>
+        <i class="fas fa-phone-alt fa-beat" style="font-size:40px; color:var(--accent); margin-bottom:20px"></i>
+        <h2 style="margin:0">Incoming</h2>
         <div style="display:flex; gap:12px; margin-top:25px;">
-            <button onclick="answerCall()" style="background:var(--green); flex:1; padding:18px; border-radius:18px; color:white; border:none; font-weight:bold; font-size:16px;">ANSWER</button>
-            <button onclick="declineCall()" style="background:var(--danger); flex:1; padding:18px; border-radius:18px; color:white; border:none; font-weight:bold; font-size:16px;">IGNORE</button>
+            <button onclick="answerCall()" style="background:var(--green); flex:1; padding:18px; border-radius:18px; color:white; border:none; font-weight:bold;">ANSWER</button>
+            <button onclick="declineCall()" style="background:var(--danger); flex:1; padding:18px; border-radius:18px; color:white; border:none; font-weight:bold;">IGNORE</button>
         </div>
     </div>
 
@@ -78,7 +58,7 @@
             <button class="v-btn" id="mute-btn" onclick="toggleMute()"><i class="fas fa-microphone"></i></button>
             <button class="v-btn" id="cam-btn" onclick="toggleVideo()"><i class="fas fa-video"></i></button>
             <button class="v-btn" onclick="switchCamera()"><i class="fas fa-camera-rotate"></i></button>
-            <button class="v-btn end" onclick="endCall()"><i class="fas fa-phone-slash"></i></button>
+            <button class="v-btn end" style="background:var(--danger)" onclick="endCall()"><i class="fas fa-phone-slash"></i></button>
         </div>
     </div>
 
@@ -93,108 +73,86 @@
 </div>
 
 <script>
-    // --- AUDIO SYSTEM ---
-    const sfx = {
+    const sounds = {
         msg: new Audio('https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3'),
         ring: new Audio('https://assets.mixkit.co/active_storage/sfx/1359/1359-preview.mp3'),
         dial: new Audio('https://assets.mixkit.co/active_storage/sfx/1351/1351-preview.mp3'),
         up: new Audio('https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3'),
         down: new Audio('https://assets.mixkit.co/active_storage/sfx/2567/2567-preview.mp3')
     };
-    sfx.ring.loop = true; sfx.dial.loop = true;
+    sounds.ring.loop = true; sounds.dial.loop = true;
 
-    function stopSfx() { Object.values(sfx).forEach(s => { s.pause(); s.currentTime = 0; }); }
-    
-    let audioAwake = false;
-    function wakeAudio() {
-        if (!audioAwake) {
-            Object.values(sfx).forEach(s => { s.play().then(() => { s.pause(); s.currentTime = 0; }).catch(() => {}); });
-            audioAwake = true;
+    let audioEnabled = false;
+    function forceAudioStart() {
+        if (!audioEnabled) {
+            Object.values(sounds).forEach(s => { s.play(); s.pause(); s.currentTime = 0; });
+            audioEnabled = true;
         }
     }
 
-    // --- P2P LOGIC ---
+    function killSounds() { Object.values(sounds).forEach(s => { s.pause(); s.currentTime = 0; }); }
+
     const BASE_ID = "BANPUR_STATION_MAIN";
     const MEMBER_ID = "MEMBER_" + Math.floor(Math.random() * 999);
     let peer, myId, targetId, connection, localStream, currentCall, incomingCall, facingMode = "user";
 
-    function initPeer() {
-        // Try Base first
+    function startApp() {
         peer = new Peer(BASE_ID);
-        
-        peer.on('open', (id) => {
-            myId = BASE_ID;
+        peer.on('open', (id) => { 
+            myId = BASE_ID; 
             document.getElementById('role-label').innerText = "BASE ONLINE";
             document.getElementById('status-dot').classList.add('online');
-            attachEvents();
+            setupPeerListeners();
         });
-
         peer.on('error', (err) => {
             if (err.type === 'unavailable-id') {
-                myId = MEMBER_ID;
-                targetId = BASE_ID;
+                myId = MEMBER_ID; targetId = BASE_ID;
                 peer = new Peer(myId);
                 peer.on('open', () => {
                     document.getElementById('role-label').innerText = "MEMBER ONLINE";
                     document.getElementById('status-dot').classList.add('online');
-                    tryConnect();
+                    reconnect();
                 });
-                attachEvents();
+                setupPeerListeners();
             }
         });
     }
 
-    function attachEvents() {
-        peer.on('connection', conn => {
-            connection = conn;
-            targetId = conn.peer;
-            setupChat();
-        });
-
-        peer.on('call', call => {
-            incomingCall = call;
-            stopSfx();
-            sfx.ring.play();
-            document.getElementById('call-popup').style.display = 'block';
+    function setupPeerListeners() {
+        peer.on('connection', conn => { connection = conn; targetId = conn.peer; wireChat(); });
+        peer.on('call', call => { 
+            incomingCall = call; 
+            killSounds(); sounds.ring.play();
+            document.getElementById('call-popup').style.display = 'block'; 
         });
     }
 
-    function tryConnect() {
-        if (targetId) {
-            connection = peer.connect(targetId, { reliable: true });
-            setupChat();
-        }
-    }
+    function reconnect() { if (targetId) { connection = peer.connect(targetId); wireChat(); } }
 
-    function setupChat() {
-        connection.on('open', () => {
-            document.getElementById('v-call-btn').style.display = 'block';
-        });
+    function wireChat() {
+        connection.on('open', () => { document.getElementById('v-call-btn').style.display = 'block'; });
         connection.on('data', data => {
-            sfx.msg.play();
-            appendMessage("Family", data, 'received');
+            if (data === "___PICKUP___") { killSounds(); sounds.up.play(); return; }
+            if (data === "___HANGUP___") { endCall(); return; }
+            sounds.msg.play(); appendMessage("Family", data, 'received');
         });
-        connection.on('close', () => {
-            document.getElementById('v-call-btn').style.display = 'none';
-            setTimeout(tryConnect, 3000);
-        });
+        connection.on('close', () => { document.getElementById('v-call-btn').style.display = 'none'; setTimeout(reconnect, 3000); });
     }
 
     async function startCall() {
-        stopSfx();
-        sfx.dial.play();
+        killSounds(); sounds.dial.play();
         localStream = await navigator.mediaDevices.getUserMedia({video: {facingMode: facingMode}, audio: true});
         currentCall = peer.call(targetId, localStream);
-        
-        currentCall.on('stream', rs => {
-            stopSfx(); sfx.up.play();
+        currentCall.on('stream', rs => { 
+            killSounds(); sounds.up.play();
             showVideo(localStream);
             document.getElementById('remote-video').srcObject = rs;
         });
     }
 
     async function answerCall() {
-        stopSfx(); sfx.up.play();
+        connection.send("___PICKUP___");
+        killSounds(); sounds.up.play();
         document.getElementById('call-popup').style.display = 'none';
         localStream = await navigator.mediaDevices.getUserMedia({video: {facingMode: facingMode}, audio: true});
         showVideo(localStream);
@@ -203,19 +161,17 @@
         currentCall.on('stream', rs => { document.getElementById('remote-video').srcObject = rs; });
     }
 
-    function declineCall() { stopSfx(); document.getElementById('call-popup').style.display = 'none'; incomingCall.close(); }
+    function declineCall() { killSounds(); document.getElementById('call-popup').style.display = 'none'; incomingCall.close(); }
 
     function endCall() {
-        stopSfx(); sfx.down.play();
+        if (connection && connection.open) connection.send("___HANGUP___");
+        killSounds(); sounds.down.play();
         if(currentCall) currentCall.close();
         if(localStream) localStream.getTracks().forEach(t => t.stop());
         document.getElementById('video-ui').style.display = 'none';
     }
 
-    function showVideo(stream) {
-        document.getElementById('video-ui').style.display = 'flex';
-        document.getElementById('local-video-pip').srcObject = stream;
-    }
+    function showVideo(s) { document.getElementById('video-ui').style.display = 'flex'; document.getElementById('local-video-pip').srcObject = s; }
 
     async function switchCamera() {
         facingMode = (facingMode === "user") ? "environment" : "user";
@@ -231,17 +187,8 @@
         }
     }
 
-    function toggleMute() {
-        const track = localStream.getAudioTracks()[0];
-        track.enabled = !track.enabled;
-        document.getElementById('mute-btn').classList.toggle('off', !track.enabled);
-    }
-
-    function toggleVideo() {
-        const track = localStream.getVideoTracks()[0];
-        track.enabled = !track.enabled;
-        document.getElementById('cam-btn').classList.toggle('off', !track.enabled);
-    }
+    function toggleMute() { const t = localStream.getAudioTracks()[0]; t.enabled = !t.enabled; document.getElementById('mute-btn').classList.toggle('off', !t.enabled); }
+    function toggleVideo() { const t = localStream.getVideoTracks()[0]; t.enabled = !t.enabled; document.getElementById('cam-btn').classList.toggle('off', !t.enabled); }
 
     function sendMessage() {
         const input = document.getElementById('message-input');
@@ -252,16 +199,12 @@
         }
     }
 
-    function appendMessage(sender, text, type) {
-        const div = document.createElement('div');
-        div.className = `msg ${type}`;
-        div.innerText = text;
-        const box = document.getElementById('chat-box');
-        box.appendChild(div);
-        box.scrollTop = box.scrollHeight;
+    function appendMessage(s, t, type) {
+        const div = document.createElement('div'); div.className = `msg ${type}`; div.innerText = t;
+        const box = document.getElementById('chat-box'); box.appendChild(div); box.scrollTop = box.scrollHeight;
     }
 
-    initPeer();
+    startApp();
 </script>
 </body>
 </html>
